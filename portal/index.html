@@ -31,6 +31,15 @@ button{font:inherit;color:inherit}
 button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .lab{font:700 12px/1 var(--disp);letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
 
+/* Terms */
+#terms{z-index:40}
+#terms .tbox{width:min(560px,94vw);max-height:86vh;display:grid;grid-template-rows:auto 1fr auto;gap:12px;text-align:left}
+#terms .tbody{overflow:auto;padding-right:8px;font-size:14px;line-height:1.55;color:#cdd6df}
+#terms h3{margin:14px 0 4px;font:800 14px/1.2 var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+#terms p,#terms li{margin:0 0 6px}#terms ul{margin:0 0 6px;padding-left:20px}
+.tlink{background:none;border:0;padding:4px 2px;font:600 12px/1 var(--disp);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.tlink:hover,.tlink:focus-visible{color:var(--fg)}
+#title .tterms{position:absolute;left:clamp(20px,5vw,64px);bottom:clamp(10px,2.5vw,24px);z-index:3}
 /* Online play */
 #mp{z-index:30}
 #mp .mpbox{width:min(460px,94vw);display:grid;gap:12px;text-align:left}
@@ -524,6 +533,7 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 <div id="stage">
   <div id="title">
     <div class="tbest"><span>Best scrap<b id="tBest">0</b></span></div>
+    <div class="tterms"><button type="button" class="tlink" data-terms>Terms &amp; Conditions</button></div>
     <div class="tcol">
       <div class="kick">Build · Bolt · Brawl</div>
       <h1>Scrap<span>bots</span></h1>
@@ -687,6 +697,38 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
       <div class="row"><button id="again" class="btn">Redeploy</button><button id="overShop" class="btn alt">Rebuild</button><button id="oRoster" class="btn alt" title="Choose which designs can turn up as enemy raiders">Raiders</button></div></div>
   </div>
 
+  <div id="terms" class="overlay" hidden>
+    <div class="box tbox" role="dialog" aria-modal="true" aria-labelledby="tTitle">
+      <div><div class="kick">Please read</div><h2 id="tTitle" style="margin:0">Terms &amp; Conditions</h2></div>
+      <div class="tbody" id="tBody" tabindex="0">
+        <p>Last updated: 16 November 2026. By playing Scrapbots you agree to these terms. If you do not agree, please do not play.</p>
+        <h3>1. The game</h3>
+        <p>Scrapbots is a free game about building and fighting robots. It is provided for fun, as it is, without promises that it will always be available, free of bugs, or work on every device. It may change, move or stop at any time.</p>
+        <h3>2. Playing fair</h3>
+        <ul><li>Do not cheat, tamper with the game, or try to break, overload or attack the game or its servers.</li>
+        <li>Do not harass other players or use offensive, hateful or unlawful names or bot designs.</li>
+        <li>We may remove players or rooms that break these rules, without warning.</li></ul>
+        <h3>3. Online play and your information</h3>
+        <ul><li>When you play online, the game sends your pilot name, your bot design, and your in-game moves and hits to the other players in your room through a game server. Other players can see your pilot name.</li>
+        <li>Do not use your real name or any private information as a pilot name.</li>
+        <li>The server only passes messages between players while you are connected. It does not keep accounts, passwords or chat records.</li>
+        <li>The game saves your bots, best score and settings only in your own browser (local storage). Clearing your browser data removes them.</li>
+        <li>The game does not ask for payments and does not require an account.</li></ul>
+        <h3>4. Your designs</h3>
+        <p>You keep the rights to the bot designs you make. By using online play you allow the game to show them to other players in your room. Do not upload anything you do not have the right to use.</p>
+        <h3>5. Ownership</h3>
+        <p>The game, its code, art and sounds belong to its creator. You may play it, but you may not copy, sell or pass it off as your own without permission.</p>
+        <h3>6. No guarantees</h3>
+        <p>To the fullest extent the law allows, the game is provided without warranties of any kind, and its creator is not responsible for any loss or damage from playing it, including lost saves, interrupted matches, or the actions of other players. Nothing here limits rights that the law says cannot be limited.</p>
+        <h3>7. Changes</h3>
+        <p>These terms may be updated from time to time. Continuing to play after a change means you accept the new terms.</p>
+        <h3>8. Younger players</h3>
+        <p>If you are young, please ask a parent or guardian before playing online with other people.</p>
+      </div>
+      <div class="mrow"><button id="termsClose" class="btn">Close</button></div>
+    </div>
+  </div>
+
   <div id="mp" class="overlay" hidden>
     <div class="box mpbox" role="dialog" aria-modal="true" aria-labelledby="mpTitle">
       <div class="kick">Free for all · up to 12 pilots</div><h2 id="mpTitle">Play online</h2>
@@ -709,6 +751,7 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
         <div class="mrow" style="margin-top:10px"><button id="mpStart" class="btn">Start match</button></div>
       </div>
       <div class="mstat" id="mpStat" role="status"></div>
+      <div style="font-size:12px;color:var(--muted)">By playing online you agree to the <button type="button" class="tlink" data-terms style="font-size:12px;text-transform:none;letter-spacing:0;padding:0">Terms &amp; Conditions</button>.</div>
       <div class="mrow"><button id="mpBack" class="btn alt">Back</button></div>
     </div>
   </div>
@@ -5610,6 +5653,9 @@ function netLeave(){
   try{if(NET.ws)NET.ws.close()}catch(e){}
   NET.ws=null;netReset();
 }
+document.querySelectorAll('[data-terms]').forEach(function(b){b.addEventListener('click',function(){$('terms').hidden=false;$('tBody').scrollTop=0;$('termsClose').focus()})});
+$('termsClose').addEventListener('click',function(){$('terms').hidden=true});
+document.addEventListener('keydown',function(e){if(!$('terms').hidden&&e.key==='Escape'){$('terms').hidden=true;e.stopPropagation()}},true);
 $('tOnline').addEventListener('click',function(){$('mp').hidden=false;mpShow(!!NET.code);$('mpServer').value=NET_DEF;try{$('mpName').value=localStorage.getItem('scrapbots.name')||''}catch(e){}mpStat('');if(!NET.code)pubRefresh()});
 $('mpCreate').addEventListener('click',function(){netJoinMsg('create')});
 $('mpQuick').addEventListener('click',netQuick);
