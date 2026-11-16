@@ -46,6 +46,8 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 #mp .plist{display:grid;gap:4px;max-height:240px;overflow:auto;margin:0;padding:0;list-style:none}
 #mp .plist li{display:flex;justify-content:space-between;padding:8px 10px;border-radius:5px;background:rgba(255,255,255,.05);font-weight:600}
 #mp .plist li b{color:var(--accent);font-size:11px;letter-spacing:.12em}
+#mp .pubs{display:grid;gap:6px}#mp .pub{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+#mp .pub b{flex:1;font:700 16px/1 var(--disp);letter-spacing:.06em}#mp .pub span{font-size:12px;color:var(--muted)}#mp .pub .btn{padding:8px 14px;font-size:14px}
 #mp details{font-size:12px;color:var(--muted)}#mp details input{margin-top:6px;font-size:13px}
 #mpBoard{position:absolute;right:14px;top:56px;min-width:170px;max-width:240px;padding:8px 10px;border-radius:8px;background:rgba(2,8,14,.62);border:1px solid var(--line);font:600 13px/1.5 var(--disp);letter-spacing:.04em;pointer-events:none}
 #mpBoard h4{margin:0 0 4px;font:800 11px/1 var(--disp);letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
@@ -692,8 +694,12 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
       <div id="mpHome">
         <label class="lab" for="mpName">Pilot name</label>
         <input type="text" id="mpName" maxlength="14" placeholder="Pilot" autocomplete="off">
-        <div class="mrow" style="margin-top:10px"><button id="mpCreate" class="btn">Create room</button></div>
-        <div class="lab" style="margin:12px 0 6px">or join with a code</div>
+        <div class="mrow" style="margin-top:10px"><button id="mpQuick" class="btn">Quick play</button></div>
+        <div class="lab" style="margin:12px 0 6px">Public arenas. Always open, drop in any time</div>
+        <div class="pubs" id="mpPubs"></div>
+        <div class="lab" style="margin:14px 0 6px">Or play with friends</div>
+        <div class="mrow"><button id="mpCreate" class="btn alt">Create private room</button></div>
+        <div class="lab" style="margin:12px 0 6px">join a private room with a code</div>
         <div class="mrow"><input type="text" id="mpCode" class="code" maxlength="4" placeholder="ABCD" autocomplete="off"><button id="mpJoin" class="btn alt">Join</button></div>
         <details><summary>Server</summary><input type="text" id="mpServer" autocomplete="off" spellcheck="false" placeholder="wss://your-server.onrender.com"></details>
       </div>
@@ -742,7 +748,7 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a
 var S=0.4;                         /* cell size in metres */
 var BOUNDS={x:1e6,y:1e6,z:1e6},MAXB=1e9;  /* the build area is limitless: only the floor stops you */
 var DIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
-var NET={on:false,ws:null,id:0,code:'',host:0,players:{},sendT:0,mine:false,spawnT:0,kills:0,deaths:0,name:'Pilot'},curSrc=null;      /* online play: NET.on is true during a match */
+var NET={pub:false,on:false,ws:null,id:0,code:'',host:0,players:{},sendT:0,mine:false,spawnT:0,kills:0,deaths:0,name:'Pilot'},curSrc=null;      /* online play: NET.on is true during a match */
 var ADV_ON=false;                                  /* Advanced mode is switched off for now: set this to true to bring the mode switch and advanced parts back */
 var advMode=(function(){try{return ADV_ON&&localStorage.getItem('scrapbots.mode')==='adv'}catch(e){return false}})();
 function SK(k){return k+(advMode?'.adv':'')}
@@ -3672,8 +3678,8 @@ function kill(o){
     shake=1;if(NET.on)netDead();
     if(!startCine('wreck'))setTimeout(gameOver,900);
   }else{
-    if(!NET.on||NET.mine){kills++;score+=100;botDown()}
-    if(player&&!player.dead&&(!NET.on||NET.mine))restoreParts(player);        /* a kill lets you win lost parts back */
+    if(!o.remote||NET.mine){kills++;score+=100;botDown()}
+    if(player&&!player.dead&&(!o.remote||NET.mine))restoreParts(player);        /* a kill lets you win lost parts back */
     var n=2+(Math.random()<.5?1:0);
     for(var i=0;i<n;i++)dropScrap(o.pos.x+rand(-1.5,1.5),o.pos.z+rand(-1.5,1.5));
   }
@@ -3713,8 +3719,8 @@ function abandon(o){
     shake=.7;toast('Cockpit abandoned. The pilot bails out');if(NET.on)netDead();
     if(!startCine('wreck'))setTimeout(function(){if(mode==='play'&&player===o)gameOver()},2400);        /* the pilot's escape gets the same wreck cutscene and results screen as any other defeat */
   }else{
-    if(!NET.on||NET.mine){kills++;score+=100;botDown()}
-    if(player&&!player.dead&&(!NET.on||NET.mine))restoreParts(player);
+    if(!o.remote||NET.mine){kills++;score+=100;botDown()}
+    if(player&&!player.dead&&(!o.remote||NET.mine))restoreParts(player);
     var n=2+(Math.random()<.5?1:0);
     for(var i=0;i<n;i++)dropScrap(o.pos.x+rand(-1.5,1.5),o.pos.z+rand(-1.5,1.5));
   }
@@ -5142,7 +5148,7 @@ function update(dt){
   });
   fighters.forEach(function(f){processDamage(f);damageFx(f,dt);frostFx(f,dt)});
   if(tut)updateTut(dt);
-  spawnT-=dt;if(spawnT<=0){spawnT=8;if(!player.dead&&!NET.on)spawnWave()}
+  spawnT-=dt;if(spawnT<=0){spawnT=8;if(!player.dead&&(!NET.on||NET.pub))spawnWave()}
   fighters=fighters.filter(function(f){return !f.dead||f===player});
   fighters.forEach(function(f){
     if(!f.bar)return;
@@ -5212,7 +5218,7 @@ function startGame(isTut){
   tut=isTut===true?{i:0,sx:0,sz:0,yaw0:0,jumped:false,dashed:false,fp:false,hit:false,wait:0}:null;
   ensureWorld();clearWorldState();
   updateSky(0);                                          /* the clock keeps running across redeploys; it only starts at 07:40 on a fresh page */
-  kills=0;score=0;spawnT=tut||NET.on?1e9:10;time=0;shake=0;hitFlash=0;hintT=0;paused=false;
+  kills=0;score=0;spawnT=tut||(NET.on&&!NET.pub)?1e9:10;time=0;shake=0;hitFlash=0;hintT=0;paused=false;
   el.hint.classList.remove('fade');el.hint.style.display=tut?'none':'';
   resetRings();
   START=tut?{x:SPAWN.x,z:SPAWN.z}:pickStart();lastStart=START;
@@ -5223,8 +5229,8 @@ function startGame(isTut){
     var dm=spawnEnemy(SPAWN.x,SPAWN.z-17);dm.dummy=true;dm.targetYaw=dm.yaw=0;
     $('tut').hidden=false;renderTut();
   }else $('tut').hidden=true;
-  if(!tut&&!NET.on){                                /* the whole map starts populated: raiders strewn everywhere, about half of them up on the mountains */
-    for(var rn=0;rn<90;rn++){                       /* about one raider for every 180 m of island, spread so the whole map has someone on it */
+  if(!tut&&(!NET.on||NET.pub)){                     /* the whole map starts populated (a public arena gets a thinner scatter, so there is always something to fight) */
+    for(var rn=0;rn<(NET.on?26:90);rn++){                       /* about one raider for every 180 m of island, spread so the whole map has someone on it */
       /* the island is shared out: a third of the raiders in the red canyon, a third on the snowy island, the rest on the green islands (half of those up on the mountains) */
       var reg=rn%3===0?'red':rn%3===1?'snow':'green',gap=rn<60?110:75,lp=reg==='green'&&rn%2===0?spacedPoint(0,0,0,WHALF-30,true,gap,START.x,START.z,170):regionPoint(reg,gap,START.x,START.z,rn<2?90:170);
       if(!lp)lp=spacedPoint(0,0,0,WHALF-30,false,75,START.x,START.z,170);
@@ -5454,7 +5460,7 @@ function netOpen(then){
   ws.onerror=function(){};
 }
 function netReset(){
-  NET.on=false;NET.code='';NET.host=0;NET.players={};NET.mine=false;
+  NET.on=false;NET.pub=false;NET.code='';NET.host=0;NET.players={};NET.mine=false;
   Object.keys(NET.rec||{}).forEach(function(k){});
   $('mpBoard').hidden=true;$('again').textContent='Redeploy';$('oRoster').style.display='';$('overShop').textContent='Rebuild';
 }
@@ -5472,13 +5478,32 @@ function netJoinMsg(t,code){
   NET.name=netName();
   netOpen(function(){netSend({t:t,code:code,name:NET.name,spec:netSpec()})});
 }
+function pubRender(rooms){
+  NET.rooms=rooms;var L=$('mpPubs');L.innerHTML='';
+  rooms.forEach(function(r){
+    var d=document.createElement('div');d.className='pub';
+    var b=document.createElement('b');b.textContent=r.name;var sp=document.createElement('span');sp.textContent=r.n+' / '+r.max+' pilots';
+    var bt=document.createElement('button');bt.className='btn alt';bt.textContent=r.n>=r.max?'Full':'Join';bt.disabled=r.n>=r.max;bt.onclick=function(){netJoinMsg('join',r.code)};
+    d.appendChild(b);d.appendChild(sp);d.appendChild(bt);L.appendChild(d);
+  });
+}
+function pubRefresh(){
+  var url=($('mpServer').value||'').trim()||NET_DEF;
+  $('mpPubs').innerHTML='<span style="font-size:12px;color:var(--muted)">Looking for arenas...</span>';
+  netOpen(function(){netSend({t:'list'})});
+}
+function netQuick(){
+  var go=function(){var a=(NET.rooms||[]).filter(function(r){return r.n<r.max}).sort(function(x,y){return y.n-x.n});if(!a.length){mpStat('All public arenas are full right now. Try again in a moment.',true);return}netJoinMsg('join',a[0].code)};
+  if(NET.rooms)go();else netOpen(function(){netSend({t:'list'});setTimeout(go,900)});
+}
 function netMsg(m){
   var rec;
   switch(m.t){
     case 'hello':NET.id=m.id;break;
+    case 'rooms':pubRender(m.rooms);break;
     case 'err':mpStat(m.msg,true);break;
-    case 'joined':NET.code=m.code;NET.host=m.host;mpShow(true);break;
-    case 'lobby':if(!NET.on||!$('mp').hidden)mpRender(m);else NET.host=m.host;break;
+    case 'joined':NET.code=m.code;NET.host=m.host;NET.pub=!!m.pub;if(m.pub)mpStat('Dropping into the arena...');else mpShow(true);break;
+    case 'lobby':if(m.pub)break;if(!NET.on||!$('mp').hidden)mpRender(m);else NET.host=m.host;break;
     case 'start':netStart(m);break;
     case 'peer':if(NET.on&&m.player.id!==NET.id){NET.players[m.player.id]={id:m.player.id,name:m.player.name,spec:m.player.spec,kills:0,deaths:0,f:null,s:null};toast(m.player.name+' joined');netBoard()}break;
     case 's':
@@ -5515,12 +5540,12 @@ function netDead(){
 function netStart(m){
   NET.players={};NET.kills=0;NET.deaths=0;NET.killer=0;
   m.players.forEach(function(p){if(p.id!==NET.id)NET.players[p.id]={id:p.id,name:p.name,spec:p.spec,kills:0,deaths:0,f:null,s:null}});
-  NET.on=true;$('mp').hidden=true;
+  NET.on=true;NET.pub=!!m.pub;$('mp').hidden=true;
   if(mode==='title')leaveTitle(true);
   startGame();
   if(mode!=='play'){netLeave();return}
   $('again').textContent='Respawn';$('oRoster').style.display='none';$('overShop').textContent='Leave';
-  NET.spawnT=4;netBoard();toast('Free for all: '+(Object.keys(NET.players).length+1)+' pilots');
+  NET.spawnT=4;netBoard();toast((NET.pub?'Public arena: ':'Free for all: ')+(Object.keys(NET.players).length+1)+' pilot'+(Object.keys(NET.players).length?'s':'')+(NET.pub&&!Object.keys(NET.players).length?'. Raiders roam until others drop in':''));
 }
 function netSpawnRemote(rec,x,z){
   var f=spawnFighter(putColors({b:rec.spec.b.map(function(k){return k.slice()}),pose:JSON.parse(JSON.stringify(rec.spec.pose||{}))},rec.spec),1,x,z,1);
@@ -5586,8 +5611,9 @@ function netLeave(){
   try{if(NET.ws)NET.ws.close()}catch(e){}
   NET.ws=null;netReset();
 }
-$('tOnline').addEventListener('click',function(){$('mp').hidden=false;mpShow(!!NET.code);$('mpServer').value=NET_DEF;try{$('mpName').value=localStorage.getItem('scrapbots.name')||''}catch(e){}if(NET.code&&NET.ws)mpStat('');else mpStat('')});
+$('tOnline').addEventListener('click',function(){$('mp').hidden=false;mpShow(!!NET.code);$('mpServer').value=NET_DEF;try{$('mpName').value=localStorage.getItem('scrapbots.name')||''}catch(e){}mpStat('');if(!NET.code)pubRefresh()});
 $('mpCreate').addEventListener('click',function(){netJoinMsg('create')});
+$('mpQuick').addEventListener('click',netQuick);
 $('mpJoin').addEventListener('click',function(){var c=($('mpCode').value||'').trim().toUpperCase();if(c.length!==4){mpStat('Enter the four-letter room code.',true);return}netJoinMsg('join',c)});
 $('mpCode').addEventListener('input',function(){this.value=this.value.toUpperCase().replace(/[^A-Z]/g,'')});
 $('mpStart').addEventListener('click',function(){netSend({t:'start'})});
